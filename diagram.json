@@ -11,13 +11,23 @@
       "left": -150.8,
       "rotate": 180,
       "attrs": { "hornColor": "white" }
-    }
+    },
+    { "type": "wokwi-pushbutton", "id": "btnUp", "top": 260, "left": -110, "attrs": { "color": "green", "label": "UP" } },
+    { "type": "wokwi-pushbutton", "id": "btnDown", "top": 260, "left": -40, "attrs": { "color": "yellow", "label": "DOWN" } },
+    { "type": "wokwi-pushbutton", "id": "btnSet", "top": 260, "left": 30, "attrs": { "color": "red", "label": "SET" } }
   ],
   "connections": [
     [ "uno:GND.1", "servo1:GND", "black", [ "v0" ] ],
     [ "servo1:PWM", "uno:9", "green", [ "v-19.4", "h152.8" ] ],
     [ "servo:V+", "uno:5V", "red", [ "h0" ] ],
-    [ "servo1:V+", "uno:5V", "red", [ "h300", "v300", "h100"] ]
+    [ "servo1:V+", "uno:5V", "red", [ "h300", "v300", "h100"] ],
+    [ "btnUp:1.l", "uno:2", "green", [ "h0" ] ],
+    [ "btnUp:2.l", "uno:GND.2", "black", [ "h0" ] ],
+    [ "btnDown:1.l", "uno:8", "yellow", [ "h0" ] ],
+    [ "btnDown:2.l", "uno:GND.2", "black", [ "h0" ] ],
+    [ "btnSet:1.l", "uno:10", "orange", [ "h0" ] ],
+    [ "btnSet:2.l", "uno:GND.2", "black", [ "h0" ] ]
   ],
+  
   "dependencies": {}
 }

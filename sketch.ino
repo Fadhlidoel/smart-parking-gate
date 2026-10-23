@@ -5,7 +5,7 @@
 // #include "module_sensor.h"
 // #include "module_display.h"
 // #include "module_audio.h"
-// #include "module_storage.h"
+#include "module_storage.h"
 
 StatusSistem statusSaatIni = STATUS_SIAGA;
 int sudutPalang = SUDUT_TUTUP;
@@ -55,9 +55,7 @@ void perbaruiAudio() {}
 void inisialisasiDisplay() {}
 void inisialisasiAudio() {}
 void inisialisasiSensor() {}
-void inisialisasiStorage() {}
-int hitungSisaSlot() {return kapasitasMaks - slotTerisi;}
-bool cekTombolSetTahan() {return false;}
+
 
 void setup() {
   Serial.begin(9600);
@@ -87,7 +85,13 @@ void loop() {
     case STATUS_SIAGA:
       targetSudut = SUDUT_TUTUP;
 
-      if (cekTombolSetTahan()) {
+      if (cekTombolSetTahan() && sudutPalang == SUDUT_TUTUP) {
+        Serial.println(F("\n============================="));
+        Serial.println(F("[CONFIG]: Masuk ke Menu Konfigurasi Slot Parkir"));
+        Serial.print(F("[CONFIG]: Slot saat ini:"));
+        Serial.println(kapasitasMaks);
+        Serial.println(F("[CONFIG]: Gunakan tombol Up/Down lalu tekan Set"));
+        Serial.println(F("============================="));
         statusSaatIni = STATUS_KONFIG;
         break;
       }
@@ -125,7 +129,12 @@ void loop() {
     
     case STATUS_PENUH:
       targetSudut = SUDUT_TUTUP;
-      if (cekTombolSetTahan()) {
+      if (cekTombolSetTahan() && sudutPalang == SUDUT_TUTUP) {
+        Serial.println(F("\n============================="));
+        Serial.println(F("[CONFIG]: Masuk ke Menu Konfigurasi Slot Parkir"));
+        Serial.print(F("[CONFIG]: Slot saat ini:"));
+        Serial.println(kapasitasMaks);
+        Serial.println(F("============================="));
         statusSaatIni = STATUS_KONFIG;
       } else if (hitungSisaSlot() > 0) {
         statusSaatIni = STATUS_SIAGA;
@@ -134,7 +143,40 @@ void loop() {
 
     case STATUS_KONFIG:
       targetSudut = SUDUT_TUTUP;
-      //di isi sama storage
+
+      if (cekTombolUp()) {
+        if (kapasitasMaks < SLOT_MAX) {
+          kapasitasMaks++;
+          Serial.print(F("[CONFIG]: Tombol UP untuk menambah slot"));
+          Serial.print(kapasitasMaks);
+          Serial.println(F("Slot"));
+        } else {
+          Serial.println((F("[CONFIG]: Slot Sudah menacpai nilai maksimum")));
+        }
+      }
+
+      if (cekTombolDown()) {
+        if (kapasitasMaks > SLOT_MIN) {
+          kapasitasMaks--;
+          Serial.print(F("[CONFIG]: Tombol DOWN untuk menambah slot"));
+          Serial.print(kapasitasMaks);
+          Serial.println(F("Slot"));
+        } else {
+          Serial.println((F("[CONFIG]: Slot Sudah menacpai nilai minimum")));
+        }
+      }
+
+      if (cekTombolSet()) {
+        simpanEeprom(kapasitasMaks);
+        Serial.println(F("\n----------------------------------------"));
+        Serial.print  (F("[CONFIG]: Tersimpan ke EEPROM! Kapasitas = "));
+        Serial.println(kapasitasMaks);
+        Serial.print  (F("[CONFIG]: Sisa Slot Aktif = "));
+        Serial.println(hitungSisaSlot());
+        Serial.println(F("[CONFIG]: Keluar dari Pengaturan -> Kembali SIAGA"));
+        Serial.println(F("----------------------------------------\n"));
+        statusSaatIni = STATUS_SIAGA;
+      }
       break;
   }
 
