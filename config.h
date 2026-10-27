@@ -66,17 +66,21 @@ extern int sudutPalang;                 // Posisi sudut servo saat ini
 #define PIN_ECHO_KELUAR           7     // Pin Echo sensor keluar
 
 // Parameter Jarak & Waktu Deteksi
-#define JARAK_DETEKSI           100     // Batas deteksi mobil (< 100 cm ada mobil)
+#define JARAK_DETEKSI           100     // Batas deteksi mobil (<= 100 cm ada mobil)
 #define DURASI_VALIDASI        2000     // Waktu henti mobil di sensor masuk (ms)
 #define INTERVAL_SENSOR          50     // Jeda pembacaan sensor berkala (ms)
 #define TIMEOUT_ECHO          15000     // Batas waktu pulsa echo (mikrodetik)
+#define DURASI_CLEARANCE       1000     // Sensor 2 harus kosong stabil selama ini sebelum palang menutup (ms)
+#define TIMEOUT_LEWAT         30000     // Batas tunggu mobil menyentuh Sensor 2 sejak palang terbuka penuh (ms)
 
 // Prototipe Fungsi Sensor
 void inisialisasiSensor();
 long bacaJarak(uint8_t pinTrig, uint8_t pinEcho);
 bool cekMobilMasuk();                    // True jika mobil stabil >= 2 detik di Sensor 1
-bool cekMobilLewat();                    // True jika mobil sudah selesai lewat Sensor 2
+bool cekMobilLewat();                    // True jika Sensor 2 pernah terhalang lalu kosong stabil >= DURASI_CLEARANCE
 void resetValidasiMasuk();               // Reset timer validasi jika mobil pergi sebelum 2 detik
+void resetSensorKeluar();                // Reset status Sensor 2 setiap kali palang selesai membuka
+bool sensorKeluarPernahTerdeteksi();     // True jika Sensor 2 sudah terhalang sejak reset terakhir
 
 
 /* =================================================================================================
@@ -188,7 +192,12 @@ void kurangiSlot();                     // Kurangi slot terisi (opsional jika ad
  * - TC-03: Sisa slot = 0 -> Akses ditolak, palang terkunci, LED Merah kedip lambat, buzzer bunyi tolak.
  * - TC-04: Mobil berhenti di Sensor 2 -> Palang tidak boleh turun sampai Sensor 2 bebas.
  * - TC-05: Tombol SET ditekan saat palang buka/mobil lewat -> Mode config ditolak (Safety Interlock).
+ *          Config hanya bisa dibuka dari STATUS_SIAGA atau STATUS_PENUH dengan palang di 0 derajat.
  * - TC-06: Simulasi di-restart -> Nilai kapasitas slot tetap terjaga sesuai EEPROM.
+ * - TC-07: Sensor 2 terhalang lalu kosong < 1 detik dan terhalang lagi -> Palang tetap 90 derajat.
+ *          Palang baru menutup setelah Sensor 2 kosong stabil >= 1 detik (DURASI_CLEARANCE).
+ * - TC-08: Palang terbuka tetapi Sensor 2 tidak pernah terhalang selama 30 detik (TIMEOUT_LEWAT)
+ *          -> Palang menutup otomatis, slot terisi TIDAK bertambah.
  * =================================================================================================
  */
 
