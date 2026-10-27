@@ -1,265 +1,115 @@
 {
   "version": 1,
-  "author": "Hana Fitri Annisa",
+  "author": "Fadhli Abdulhaq",
   "editor": "wokwi",
   "parts": [
     {
       "type": "wokwi-arduino-uno",
       "id": "uno",
-      "top": 285,
-      "left": 380,
+      "top": -166.2,
+      "left": 375.8,
+      "rotate": 90,
       "attrs": {}
     },
-    {
-      "type": "wokwi-hc-sr04",
-      "id": "sensorMasuk",
-      "top": 25,
-      "left": 95,
-      "attrs": {}
-    },
-    {
-      "type": "wokwi-hc-sr04",
-      "id": "sensorKeluar",
-      "top": 25,
-      "left": 765,
-      "attrs": {}
-    },
+    { "type": "wokwi-hc-sr04", "id": "sensorMasuk", "top": 193.5, "left": 120.7, "attrs": {} },
+    { "type": "wokwi-hc-sr04", "id": "sensorKeluar", "top": 193.5, "left": 677.5, "attrs": {} },
     {
       "type": "wokwi-servo",
       "id": "servo",
-      "top": 135,
-      "left": 420,
+      "top": 341.8,
+      "left": 423.4,
+      "rotate": 90,
       "attrs": {}
     },
     {
       "type": "wokwi-lcd1602",
       "id": "lcd",
-      "top": 385,
-      "left": 55,
-      "attrs": {
-        "pins": "i2c"
-      }
+      "top": -156.8,
+      "left": 24.8,
+      "attrs": { "pins": "i2c" }
     },
     {
       "type": "wokwi-led",
       "id": "ledHijau",
-      "top": 345,
-      "left": 690,
-      "attrs": {
-        "color": "green"
-      }
+      "top": -70.8,
+      "left": 762.2,
+      "attrs": { "color": "green" }
     },
     {
       "type": "wokwi-resistor",
       "id": "rHijau",
-      "top": 395,
-      "left": 690,
-      "attrs": {
-        "value": "220"
-      }
+      "top": 13.55,
+      "left": 729.6,
+      "attrs": { "value": "220" }
     },
     {
       "type": "wokwi-led",
       "id": "ledMerah",
-      "top": 450,
-      "left": 690,
-      "attrs": {
-        "color": "red"
-      }
+      "top": -70.8,
+      "left": 867.8,
+      "attrs": { "color": "red" }
     },
     {
       "type": "wokwi-resistor",
       "id": "rMerah",
-      "top": 500,
-      "left": 690,
-      "attrs": {
-        "value": "220"
-      }
+      "top": 23.15,
+      "left": 816,
+      "attrs": { "value": "220" }
     },
-    {
-      "type": "wokwi-buzzer",
-      "id": "buzzer",
-      "top": 475,
-      "left": 820,
-      "attrs": {}
-    },
+    { "type": "wokwi-buzzer", "id": "buzzer", "top": 69.6, "left": 769.8, "attrs": {} },
     {
       "type": "wokwi-pushbutton",
       "id": "btnUp",
-      "top": 555,
-      "left": 235,
-      "attrs": {
-        "color": "green",
-        "label": "UP"
-      }
+      "top": 25.4,
+      "left": -9.6,
+      "attrs": { "color": "green", "label": "UP" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btnDown",
-      "top": 555,
-      "left": 375,
-      "attrs": {
-        "color": "red",
-        "label": "DOWN"
-      }
+      "top": 25.4,
+      "left": 86.4,
+      "attrs": { "color": "red", "label": "DOWN" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btnSet",
-      "top": 555,
-      "left": 515,
-      "attrs": {
-        "color": "blue",
-        "label": "SET"
-      }
+      "top": 25.4,
+      "left": 192,
+      "attrs": { "color": "blue", "label": "SET", "xray": "", "bounce": "1" }
     }
   ],
   "connections": [
-    [
-      "lcd:SDA",
-      "uno:A4",
-      "blue"
-    ],
-    [
-      "lcd:SCL",
-      "uno:A5",
-      "yellow"
-    ],
-    [
-      "lcd:VCC",
-      "uno:5V",
-      "red"
-    ],
-    [
-      "lcd:GND",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "sensorMasuk:VCC",
-      "uno:5V",
-      "red"
-    ],
-    [
-      "sensorMasuk:GND",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "sensorMasuk:TRIG",
-      "uno:4",
-      "green"
-    ],
-    [
-      "sensorMasuk:ECHO",
-      "uno:5",
-      "orange"
-    ],
-    [
-      "sensorKeluar:VCC",
-      "uno:5V",
-      "red"
-    ],
-    [
-      "sensorKeluar:GND",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "sensorKeluar:TRIG",
-      "uno:6",
-      "green"
-    ],
-    [
-      "sensorKeluar:ECHO",
-      "uno:7",
-      "orange"
-    ],
-    [
-      "servo:V+",
-      "uno:5V",
-      "red"
-    ],
-    [
-      "servo:GND",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "servo:PWM",
-      "uno:9",
-      "purple"
-    ],
-    [
-      "btnUp:1.l",
-      "uno:2",
-      "green"
-    ],
-    [
-      "btnUp:2.l",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "btnDown:1.l",
-      "uno:8",
-      "green"
-    ],
-    [
-      "btnDown:2.l",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "btnSet:1.l",
-      "uno:10",
-      "green"
-    ],
-    [
-      "btnSet:2.l",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "uno:11",
-      "rHijau:1",
-      "green"
-    ],
-    [
-      "rHijau:2",
-      "ledHijau:A",
-      "green"
-    ],
-    [
-      "ledHijau:K",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "uno:12",
-      "rMerah:1",
-      "green"
-    ],
-    [
-      "rMerah:2",
-      "ledMerah:A",
-      "green"
-    ],
-    [
-      "ledMerah:K",
-      "uno:GND.1",
-      "black"
-    ],
-    [
-      "buzzer:1",
-      "uno:13",
-      "purple"
-    ],
-    [
-      "buzzer:2",
-      "uno:GND.1",
-      "black"
-    ]
+    [ "lcd:SDA", "uno:A4", "blue", [ "h-28.8", "v-163", "h374.4", "v312.6" ] ],
+    [ "lcd:SCL", "uno:A5", "yellow", [ "h-38.4", "v-182.1", "h374.4", "v331.7" ] ],
+    [ "lcd:VCC", "uno:5V", "red", [ "h-19.2", "v-115.1", "h374.4", "v188.2" ] ],
+    [ "lcd:GND", "uno:GND.1", "black", [ "h-9.6", "v-124.8", "h624", "v162.9" ] ],
+    [ "sensorMasuk:VCC", "uno:5V", "red", [ "v9.6", "h192", "v-339.8" ] ],
+    [ "sensorMasuk:GND", "uno:GND.1", "black", [ "v67.2", "h382.8" ] ],
+    [ "sensorMasuk:TRIG", "uno:4", "green", [ "v28.8", "h402.8" ] ],
+    [ "sensorMasuk:ECHO", "uno:5", "orange", [ "v48", "h440.8", "v-330.2" ] ],
+    [ "sensorKeluar:VCC", "uno:5V", "red", [ "v9.6", "h-364.8", "v-339.8" ] ],
+    [ "sensorKeluar:GND", "uno:GND.1", "black", [ "v67.2", "h-174" ] ],
+    [ "sensorKeluar:TRIG", "uno:6", "green", [ "v28.8", "h-154" ] ],
+    [ "sensorKeluar:ECHO", "uno:7", "orange", [ "v48", "h-116", "v-349.2" ] ],
+    [ "servo:V+", "uno:5V", "red", [ "v-134.4", "h-124.9", "v-224.6" ] ],
+    [ "servo:GND", "uno:GND.1", "black", [ "v-124.8", "h115.2", "v-278.7" ] ],
+    [ "servo:PWM", "uno:9", "purple", [ "v-144", "h115", "v-212" ] ],
+    [ "btnUp:1.l", "uno:2", "green", [ "h-9.6", "v96", "h624" ] ],
+    [ "btnUp:2.l", "uno:GND.1", "black", [ "v67.4", "h614.4" ] ],
+    [ "btnDown:1.l", "uno:8", "green", [ "h-9.6", "v76.8", "h528" ] ],
+    [ "btnDown:2.l", "uno:GND.1", "black", [ "v48.2", "h518.4" ] ],
+    [ "btnSet:1.l", "uno:10", "green", [ "h-9.6", "v57.6", "h422.4" ] ],
+    [ "btnSet:2.l", "uno:GND.1", "black", [ "v29", "h412.8" ] ],
+    [ "rHijau:1", "uno:11", "green", [] ],
+    [ "rHijau:2", "ledHijau:A", "green", [] ],
+    [ "ledHijau:C", "uno:GND.1", "black", [ "v9.6", "h-95.6", "v-67.5" ] ],
+    [ "rMerah:1", "uno:12", "green", [] ],
+    [ "rMerah:2", "ledMerah:A", "green", [] ],
+    [ "ledMerah:C", "uno:GND.1", "black", [ "v9.6", "h-201.2", "v-67.2", "h-76.8" ] ],
+    [ "buzzer:2", "uno:13", "purple", [ "v19.2", "h-172.8", "v-250" ] ],
+    [ "buzzer:1", "uno:GND.1", "black", [ "v28.8", "h-163.6", "v-269.1" ] ]
   ],
+  "serialMonitor": { "display": "always" },
   "dependencies": {}
 }
