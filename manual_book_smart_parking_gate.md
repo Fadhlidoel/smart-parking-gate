@@ -22,7 +22,7 @@ Setelah tervalidasi dan kuota parkir masih tersedia, mikrokontroler memerintahka
 
 ### 2.1 Masalah Sensor Tunggal (*Single-Sensor Blind Spot*)
 * **Celah Logika Asal:** Jika hanya menggunakan satu sensor ultrasonik di depan gerbang, saat bodi tengah atau belakang kendaraan berada tepat di bawah palang, moncong mobil telah keluar dari kerucut pancaran sensor (*beam angle*). Sensor akan membaca status kosong (*out of range*) dan mikrokontroler akan langsung menurunkan palang, menyebabkan benturan fisik pada atap kendaraan (*safety hazard*).
-* **Solusi Arsitektur:** Menerapkan arsitektur **Dual-Sensor (Entry & Exit Clearance)**. Palang hanya diizinkan turun jika Sensor 2 (setelah palang) telah mendeteksi kendaraan DAN kemudian mendeteksi bahwa kendaraan telah tuntas menjauh (*clearance event*).
+* **Solusi Arsitektur:** Menerapkan arsitektur **Dual-Sensor (Entry & Exit Clearance)**. Palang hanya diizinkan turun jika Sensor 2 (setelah palang) telah mendeteksi kendaraan DAN kemudian mendeteksi bahwa kendaraan telah tuntas menjauh (*clearance event*). Kondisi "tuntas menjauh" baru diakui setelah Sensor 2 kosong **stabil selama 1 detik** (`DURASI_CLEARANCE`), sehingga satu pembacaan gema yang hilang tidak langsung menurunkan palang.
 
 ### 2.2 Sifat Akustik Sensor HC-SR04 & Orientasi Sudut
 * **Permasalahan Pantulan Miring:** Sensor ultrasonik mengukur jarak berdasarkan pantulan gelombang suara 40 kHz. Bumper depan mobil yang aerodinamis atau miring memantulkan gelombang ke sudut lain (*specular reflection*), memicu pembacaan jarak acak (*false negative*).
@@ -58,8 +58,10 @@ Setelah tervalidasi dan kuota parkir masih tersedia, mikrokontroler memerintahka
 | **Posisi Sensor 1 (Entry)** | $1.5 - 2.0\text{ meter}$ sebelum palang | Memberikan ruang henti aman (*safe braking distance*) saat palang bergerak naik. |
 | **Posisi Sensor 2 (Exit)** | $1.5 - 2.0\text{ meter}$ setelah palang | Memastikan bumper belakang kendaraan (panjang mobil $3.5 - 4.5\text{ m}$) telah bebas sepenuhnya dari ayunan palang. |
 | **Arah Hadap Sensor** | $90^\circ$ Melintang | Menembak sisi pintu samping kendaraan. |
-| **Ambang Batas Deteksi** | Jarak $< 100\text{ cm}$ | Objek berjarak $< 100\text{ cm}$ dianggap mobil; objek $> 100\text{ cm}$ dianggap lajur kosong. |
+| **Ambang Batas Deteksi** | Jarak $\le 100\text{ cm}$ | Objek berjarak $\le 100\text{ cm}$ dianggap mobil; objek $> 100\text{ cm}$ atau di luar jangkauan baca dianggap lajur kosong. Berlaku sama untuk Sensor 1 dan Sensor 2. |
 | **Filter Validasi Masuk** | $2000\text{ ms}$ (2 detik) | Mobil harus berhenti stabil $\ge 2$ detik di depan Sensor 1 sebelum palang membuka. |
+| **Filter Clearance Keluar** | $1000\text{ ms}$ (1 detik) | Setelah Sensor 2 terhalang, sensor harus kosong stabil $\ge 1$ detik sebelum palang menutup. Jika terhalang lagi, hitungan diulang. |
+| **Batas Tunggu Lewat** | $30000\text{ ms}$ (30 detik) | Jika Sensor 2 tidak pernah terhalang dalam 30 detik sejak palang terbuka penuh, palang menutup otomatis tanpa menambah slot terisi. |
 
 ---
 
@@ -99,7 +101,7 @@ LED Merah (D12)──┤ D12
 | **Servo Motor** | PWM (Oranye)<br>V+ (Merah)<br>GND (Cokelat) | D9<br>5V<br>GND | `PIN_SERVO` | `OUTPUT` (PWM) | Di Wokwi berupa modul `wokwi-servo` (tuas putih). |
 | **Tombol UP** | Pin 1<br>Pin 2 | D2<br>GND | `PIN_TOMBOL_UP` | `INPUT_PULLUP` | Menambah kapasitas slot maksimal (Active-LOW). |
 | **Tombol DOWN** | Pin 1<br>Pin 2 | D8<br>GND | `PIN_TOMBOL_DOWN` | `INPUT_PULLUP` | Mengurangi kapasitas slot maksimal (Active-LOW). |
-| **Tombol SET** | Pin 1<br>Pin 2 | D10<br>GND | `PIN_TOMBOL_SET` | `INPUT_PULLUP` | Tahan 3 dtk: Masuk/Keluar Config; Simpan EEPROM. |
+| **Tombol SET** | Pin 1<br>Pin 2 | D10<br>GND | `PIN_TOMBOL_SET` | `INPUT_PULLUP` | Tahan 3 dtk: Masuk Config. Tekan singkat saat Config: Simpan EEPROM & Keluar. |
 | **LED Hijau** | Anoda (+)<br>Katoda (-) | D11 (via R)<br>GND | `PIN_LED_HIJAU` | `OUTPUT` | Indikator akses terbuka (aman melintas). Resistor $220\,\Omega$. |
 | **LED Merah** | Anoda (+)<br>Katoda (-) | D12 (via R)<br>GND | `PIN_LED_MERAH` | `OUTPUT` | Indikator berhenti/menutup/penuh. Resistor $220\,\Omega$. |
 | **Buzzer** | Positif (+)<br>Negatif (-) | D13<br>GND | `PIN_BUZZER` | `OUTPUT` | Umpan balik audio (alarm, bip konfirmasi). |
@@ -119,14 +121,20 @@ LED Merah (D12)──┤ D12
 | **STATUS_VALIDASI** | 0° (Mendatar) | **ON Statis** | OFF | Senyap | `Baris 1: MENDETEKSI...   `<br>`Baris 2: MOHON TUNGGU 2S ` |
 | **STATUS_BUKA** | 0° $\to$ 90° | Kedip Cepat | OFF | Bip Ritmik Cepat | `Baris 1: MEMBUKA GERBANG `<br>`Baris 2: HARAP BERHENTI  ` |
 | **STATUS_LEWAT** | 90° (Tegak) | OFF | **ON Statis** | Bip Pendek 2x | `Baris 1: SILAKAN MASUK   `<br>`Baris 2: HATI-HATI JALAN ` |
-| **STATUS_TUTUP** | 90° $\to$ 0° | Kedip Cepat | OFF | Bip Ritmik Kontinu| `Baris 1: MENUTUP GERBANG `<br>`Baris 2: AWAS PALANG TURUN` |
+| **STATUS_TUTUP** | 90° $\to$ 0° | Kedip Cepat | OFF | Bip Ritmik Kontinu| `Baris 1: MENUTUP GERBANG `<br>`Baris 2: PALANG TURUN!   ` |
 | **STATUS_PENUH** | 0° (Mendatar) | Kedip Lambat | OFF | Bip Panjang 1x | `Baris 1: PARKIR PENUH!   `<br>`Baris 2: AKSES DITOLAK    ` |
-| **STATUS_KONFIG** | 0° (Terkunci) | Kedip Bareng | Kedip Bareng| Bip Klik Pendek | `Baris 1: ATUR MAX SLOT   `<br>`Baris 2: KAPASITAS: < XX >` |
+| **STATUS_KONFIG** | 0° (Terkunci) | Kedip Bareng | Kedip Bareng| Bip Klik Pendek | `Baris 1: ATUR MAX SLOT   `<br>`Baris 2: KAPASITAS: <XX> ` |
 
 ### 5.3 Karakteristik Gerak Halus Servo (*Smooth Movement*)
 Untuk menghindari hentakan mekanis yang merusak roda gigi servo SG90 dan menjaga representasi visual realistis di Wokwi:
 * Palang tidak digerakkan instan dengan `servo.write(90)`.
 * Sudut diperbarui bertahap: $1^\circ$ setiap $15\text{ ms}$ menggunakan interpolasi `millis()` non-blocking, menghasilkan durasi buka/tutup total sekitar $1.35\text{ detik}$.
+
+### 5.4 Batasan Arsitektur Non-blocking
+* Seluruh logika di dalam `loop()` (FSM, servo, LED, LCD, tombol) berbasis `millis()` tanpa `delay()`.
+* Pengecualian yang disengaja:
+  * `tampilkanSplash()` memakai `delay()` sekitar 3,3 detik, **hanya sekali** di `setup()` sebelum `loop()` berjalan.
+  * `bacaJarak()` memakai `pulseIn()` yang menunggu pantulan maksimal `TIMEOUT_ECHO` (15 ms) per pembacaan. Jeda ini pendek dan terbatas, sehingga siklus loop tetap responsif. Akibat sampingnya, jangkauan baca maksimal sekitar 257 cm; di atas itu dianggap lajur kosong.
 
 ---
 
@@ -138,12 +146,17 @@ Untuk menghindari hentakan mekanis yang merusak roda gigi servo SG90 dan menjaga
 * Penulisan menggunakan fungsi `simpanEeprom(nilaiBaru)` (berbasis `EEPROM.update`) yang hanya menulis sel memori jika nilai berubah untuk mencegah keausan memori silikon.
 
 ### 6.2 Alur Transisi Mode Konfigurasi (*Safety Interlock*)
-1. Mode Konfigurasi **hanya dapat diakses** saat palang berada di posisi `STATUS_SIAGA` (0°).
+1. Mode Konfigurasi **hanya dapat diakses** saat palang diam tertutup di 0°, yaitu pada `STATUS_SIAGA` atau `STATUS_PENUH`. Akses dari `STATUS_PENUH` diperlukan karena itu satu-satunya cara menambah kuota saat parkir penuh.
 2. Tekan dan tahan tombol **SET (`PIN_TOMBOL_SET` / Pin 10)** selama minimal `TAHAN_CONFIG` (3 detik) untuk masuk ke menu pengaturan (`STATUS_KONFIG`).
 3. Saat masuk mode konfigurasi, servo terkunci di posisi 0° (`SUDUT_TUTUP`), dan pembacaan Sensor 1 & 2 diabaikan sementara.
 4. Tekan tombol **UP (`PIN_TOMBOL_UP` / Pin 2)** untuk menambah kuota maksimum (maks. `SLOT_MAX` = 99).
 5. Tekan tombol **DOWN (`PIN_TOMBOL_DOWN` / Pin 8)** untuk mengurangi kuota maksimum (min. `SLOT_MIN` = 1).
 6. Tekan tombol **SET** sekali lagi (`cekTombolSet()`) untuk menyimpan nilai baru ke EEPROM dan sistem kembali ke mode `STATUS_SIAGA`.
+
+### 6.3 Batasan Penghitungan Slot
+* Versi ini hanya memiliki gerbang masuk. Belum ada sensor atau pemicu untuk mobil keluar area parkir, sehingga `kurangiSlot()` disiapkan tetapi belum dipanggil.
+* `slotTerisi` tidak disimpan di EEPROM dan kembali ke 0 setiap sistem dinyalakan ulang.
+* Keluar dari `STATUS_PENUH` hanya bisa dengan menaikkan kapasitas melalui menu konfigurasi, atau dengan restart sistem.
 
 ---
 
@@ -155,25 +168,27 @@ Untuk menghindari hentakan mekanis yang merusak roda gigi servo SG90 dan menjaga
    * Panggil `bacaEeprom()`. Jika data kosong/rusak ($>99$ atau $\le 0$), atur nilai ke `SLOT_DEFAULT` (10).
    * Gerakkan servo ke posisi awal `SUDUT_TUTUP` ($0^\circ$). Nyalakan LED Merah. Status diset ke `STATUS_SIAGA`.
 2. **Evaluasi Tombol Konfigurasi:**
-   * Cek penekanan tombol SET via `cekTombolSetTahan()`. Jika terpenuhi ($\ge 3000\text{ ms}$) dan status gerbang `STATUS_SIAGA`, beralih ke `STATUS_KONFIG`.
+   * Cek penekanan tombol SET via `cekTombolSetTahan()`. Jika terpenuhi ($\ge 3000\text{ ms}$) dan status gerbang `STATUS_SIAGA` atau `STATUS_PENUH` (palang di 0°), beralih ke `STATUS_KONFIG`.
 3. **Pemeriksaan Kapasitas Parkir:**
    * Hitung sisa slot aktif via `hitungSisaSlot()`. Jika sisa slot $\le 0$, ubah status ke `STATUS_PENUH`. LED Merah berkedip lambat (`KEDIP_LAMBAT`). Palang dilarang membuka.
 4. **Akuisisi Sensor Masuk (Sensor 1):**
    * Baca jarak melalui `bacaJarak(PIN_TRIG_MASUK, PIN_ECHO_MASUK)`.
-   * Jika jarak terukur $< \text{JARAK\_DETEKSI}$ ($100\text{ cm}$), mulai hitung waktu stabil.
+   * Jika jarak terukur $\le \text{JARAK\_DETEKSI}$ ($100\text{ cm}$), reset sisa status validasi lama via `resetValidasiMasuk()`, lalu mulai hitung waktu stabil.
 5. **Penyaringan Waktu (Presence Debouncing):**
-   * Jika objek stabil bertahan $< 100\text{ cm}$ selama minimal $\text{DURASI\_VALIDASI}$ ($2000\text{ ms}$) via `cekMobilMasuk()`:
+   * Jika objek stabil bertahan $\le 100\text{ cm}$ selama minimal $\text{DURASI\_VALIDASI}$ ($2000\text{ ms}$) via `cekMobilMasuk()`:
      * Bunyikan buzzer melalui `bunyiMasuk()`.
      * Ubah status ke `STATUS_BUKA`.
    * Jika objek menghilang sebelum 2 detik, panggil `resetValidasiMasuk()` dan kembali siaga.
 6. **Mekanisme Pembukaan Gerbang:**
    * Naikkan sudut servo bertahap dari `SUDUT_TUTUP` ($0^\circ$) ke `SUDUT_BUKA` ($90^\circ$) dengan jeda `JEDA_SERVO` ($15\text{ ms}$).
    * LED Merah berkedip cepat (`KEDIP_CEPAT`) saat palang bergerak.
-   * Saat mencapai $90^\circ$, matikan LED Merah, nyalakan LED Hijau, alihkan ke `STATUS_LEWAT`.
+   * Saat mencapai $90^\circ$, matikan LED Merah, nyalakan LED Hijau, reset status Sensor 2 via `resetSensorKeluar()`, catat waktu mulai, lalu alihkan ke `STATUS_LEWAT`.
 7. **Verifikasi Lintasan Mobil (Sensor Keluar / Sensor 2):**
    * Di `STATUS_LEWAT`, sistem menunggu mobil menutupi Sensor 2 lalu kembali tuntas lewat (`cekMobilLewat()`).
+   * "Tuntas lewat" berarti Sensor 2 kosong **stabil selama 1 detik** (`DURASI_CLEARANCE`). Jika Sensor 2 terhalang lagi sebelum 1 detik, hitungan diulang dari nol.
+   * **Batas tunggu (`TIMEOUT_LEWAT`, 30 detik):** jika sejak palang terbuka penuh Sensor 2 **tidak pernah** terhalang selama 30 detik, palang menutup otomatis (`STATUS_TUTUP`) **tanpa** `tambahSlot()`. Begitu Sensor 2 pernah terhalang, batas tunggu ini tidak berlaku lagi sehingga palang tidak akan turun saat mobil masih di area Sensor 2.
 8. **Pengurangan Kuota & Penutupan Gerbang:**
-   * Begitu Sensor 2 tuntas terlewati:
+   * Begitu Sensor 2 tuntas terlewati (kosong stabil 1 detik):
      * Tambah hitungan mobil masuk via `tambahSlot()`.
      * Ubah status ke `STATUS_TUTUP`.
      * Turunkan servo bertahap dari $90^\circ$ ke $0^\circ$.
@@ -260,6 +275,11 @@ Untuk menghindari hentakan mekanis yang merusak roda gigi servo SG90 dan menjaga
                          [Ulangi Siklus Loop]
 ```
 
+**Catatan revisi flowchart:**
+* Cabang *"Sensor 2 > 100cm?"* baru dianggap **Ya** setelah Sensor 2 kosong **stabil selama 1 detik** (`DURASI_CLEARANCE`). Jika terhalang lagi sebelum 1 detik, kembali ke *"Tunggu Mobil Bebas"*.
+* Pada cabang *"Tunggu Mobil Masuk"* (Sensor 2 belum pernah terhalang), jika sudah 30 detik sejak palang terbuka penuh (`TIMEOUT_LEWAT`), sistem langsung ke `STATUS_TUTUP` **tanpa** menambah slot terisi.
+* Dari `STATUS_PENUH`, tombol SET yang ditahan 3 detik juga membuka `STATUS_KONFIG` (palang tetap 0°).
+
 ---
 
 ## 9. STRUKTUR FILE MODULAR WOKWI
@@ -296,8 +316,9 @@ smart-parking-gate/
   * Menulis fungsi inisialisasi pin `inisialisasiSensor()`.
   * Menulis algoritma pembacaan sensor ultrasonik `bacaJarak(pinTrig, pinEcho)`.
   * Membangun logika validasi mobil masuk `cekMobilMasuk()` dengan filter `DURASI_VALIDASI` (2 detik) pada `PIN_TRIG_MASUK` & `PIN_ECHO_MASUK`.
-  * Membangun logika pelacak penyelesaian lajur `cekMobilLewat()` pada `PIN_TRIG_KELUAR` & `PIN_ECHO_KELUAR`.
+  * Membangun logika pelacak penyelesaian lajur `cekMobilLewat()` pada `PIN_TRIG_KELUAR` & `PIN_ECHO_KELUAR`, dengan filter kosong stabil `DURASI_CLEARANCE` (1 detik).
   * Menyediakan fungsi reset timer validasi `resetValidasiMasuk()`.
+  * Menyediakan `resetSensorKeluar()` dan `sensorKeluarPernahTerdeteksi()` sebagai dasar timeout `TIMEOUT_LEWAT` (30 detik) di `STATUS_LEWAT`.
 
 ### Anggota 3: HMI & Visual Interface Engineer
 * **Fokus File:** `module_display.h`
@@ -345,8 +366,10 @@ smart-parking-gate/
 | **TC-02** | Mobil terdeteksi di Sensor Masuk stabil $\ge 2\text{ detik}$. | Buzzer membunyikan `bunyiMasuk()`, LED Hijau ON, servo naik perlahan ke posisi 90° (`STATUS_BUKA`). | Palang terangkat penuh; LCD menampilkan "SILAKAN MASUK". |
 | **TC-03** | Kuota parkir penuh (`hitungSisaSlot() <= 0`). Mobil berdiri di depan Sensor Masuk. | Palang menolak membuka (`STATUS_PENUH`). LED Merah kedip lambat. Buzzer membunyikan `bunyiPenuh()`. | Palang tetap 0°; LCD menampilkan "PARKIR PENUH!". |
 | **TC-04** | Mobil berhenti tepat di tengah gerbang (menghalangi Sensor Keluar). | Palang tetap tertahan di atas (90° / `STATUS_LEWAT`). Sistem menolak menutup sampai sensor bebas. | Palang tidak turun sebelum mobil tuntas lewat (`cekMobilLewat()`). |
-| **TC-05** | Tombol SET ditekan saat palang sedang terangkat atau mobil sedang melintas. | Perintah diabaikan (*Safety Interlock*). Menu konfigurasi dilarang aktif saat jalur sibuk. | Mode konfigurasi (`STATUS_KONFIG`) hanya bisa diakses saat `STATUS_SIAGA`. |
+| **TC-05** | Tombol SET ditekan saat palang sedang terangkat atau mobil sedang melintas. | Perintah diabaikan (*Safety Interlock*). Menu konfigurasi dilarang aktif saat jalur sibuk. | Mode konfigurasi (`STATUS_KONFIG`) hanya bisa diakses saat `STATUS_SIAGA` atau `STATUS_PENUH` dengan palang di 0°. |
 | **TC-06** | Simulasi di-reset / daya mati mendadak saat slot disetel ke 25. | Saat menyala kembali, kapasitas slot tetap 25 (dibaca dari `ALAMAT_EEPROM` via `bacaEeprom()`). | Nilai konfigurasi tidak hilang setelah reset. |
+| **TC-07** | Saat `STATUS_LEWAT`, Sensor 2 terhalang lalu kosong kurang dari 1 detik, kemudian terhalang lagi. | Palang tetap 90°. Hitungan clearance diulang setiap kali Sensor 2 terhalang lagi. | Palang baru turun setelah Sensor 2 kosong stabil $\ge 1$ detik. |
+| **TC-08** | Palang terbuka penuh, tetapi tidak ada objek di Sensor 2 selama 30 detik. | Sistem menutup palang otomatis (`STATUS_TUTUP`) dan kembali ke `STATUS_SIAGA`. | Palang turun setelah 30 detik; slot terisi **tidak** bertambah. |
 
 ---
 
@@ -360,4 +383,4 @@ smart-parking-gate/
    * Pada proyek master, Anggota 1 membuat tab file baru (*New File*) sesuai struktur modular: `config.h`, `module_sensor.h`, `module_display.h`, `module_audio.h`, dan `module_storage.h`.
    * Salin kode yang telah divalidasi oleh tiap anggota ke tab masing-masing.
 4. **Verifikasi Akhir:**
-   * Anggota 6 mengeksekusi skenario uji TC-01 hingga TC-06 pada proyek master untuk menjamin keandalan sistem secara terpadu.
+   * Anggota 6 mengeksekusi skenario uji TC-01 hingga TC-08 pada proyek master untuk menjamin keandalan sistem secara terpadu.

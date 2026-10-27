@@ -55,8 +55,8 @@ Pada gerbang parkir yang hanya memiliki satu sensor di pintu masuk, palang beris
 ### 2. Solusi Dua Sensor
 Untuk mencegah benturan fisik, sistem menggunakan dua sensor ultrasonik HC-SR04:
 * **Sensor 1 (Masuk):** Terpasang sebelum palang untuk mendeteksi kendaraan yang datang. Sistem menerapkan filter jeda 2 detik agar objek yang hanya melintas cepat (seperti pejalan kaki) tidak memicu pembukaan palang.
-* **Sensor 2 (Keluar):** Terpasang setelah palang. Palang hanya akan diperintahkan turun jika kendaraan telah terdeteksi melewati Sensor 2 dan benar-benar keluar dari jangkauan palang.
-* **Arsitektur Non-blocking:** Logika program menggunakan pencacah waktu `millis()` tanpa fungsi `delay()`, sehingga siklus loop tetap berjalan kontinu.
+* **Sensor 2 (Keluar):** Terpasang setelah palang. Palang hanya akan diperintahkan turun jika kendaraan telah terdeteksi melewati Sensor 2 dan area Sensor 2 kosong stabil selama 1 detik. Jika setelah palang terbuka Sensor 2 tidak pernah terhalang selama 30 detik, palang menutup otomatis tanpa menambah slot terisi.
+* **Arsitektur Non-blocking:** Logika di dalam `loop()` menggunakan pencacah waktu `millis()` tanpa fungsi `delay()`, sehingga siklus loop tetap berjalan kontinu. Pengecualian: layar pembuka (`tampilkanSplash()`) memakai `delay()` sekali di `setup()`, dan pembacaan ultrasonik memakai `pulseIn()` dengan batas tunggu maksimal 15 ms.
 
 ---
 
@@ -132,16 +132,18 @@ Untuk mencegah benturan fisik, sistem menggunakan dua sensor ultrasonik HC-SR04:
 ## Fitur Utama
 
 1. **Sistem Dua Sensor (Masuk dan Keluar):**
-   Palang tidak akan turun sebelum kendaraan melintasi Sensor 2 dan benar-benar keluar dari jangkauan palang.
-2. **Filter Waktu Deteksi (2 Detik):**
+   Palang tidak akan turun sebelum kendaraan melintasi Sensor 2 dan area Sensor 2 kosong stabil selama 1 detik (filter clearance).
+2. **Batas Tunggu 30 Detik:**
+   Jika palang sudah terbuka tetapi tidak ada kendaraan yang mencapai Sensor 2 dalam 30 detik, palang menutup otomatis agar gerbang tidak terbuka selamanya.
+3. **Filter Waktu Deteksi (2 Detik):**
    Menghindari pembukaan palang akibat objek yang melintas sekilas. Kendaraan harus berhenti stabil minimal 2 detik di depan Sensor 1.
-3. **Gerak Servo Bertahap:**
+4. **Gerak Servo Bertahap:**
    Servo digerakkan secara bertahap (1 derajat setiap 15 milidetik) sehingga pergerakan palang halus dan tidak membebani gir motor.
-4. **Penyimpanan Kuota di EEPROM:**
+5. **Penyimpanan Kuota di EEPROM:**
    Kapasitas maksimum slot parkir tersimpan di EEPROM internal Arduino. Nilai kuota tetap tersimpan meski catu daya terputus. Penulisan menggunakan `EEPROM.update()` untuk memperpanjang usia pakai memori.
-5. **Mode Pengaturan dengan Pengaman:**
-   Menu ubah slot hanya dapat dibuka jika tombol SET ditahan selama 3 detik pada saat gerbang dalam kondisi siaga (tertutup). Selama mode pengaturan, palang terkunci rapat.
-6. **Antarmuka Pengguna (LCD, LED, Buzzer):**
+6. **Mode Pengaturan dengan Pengaman:**
+   Menu ubah slot hanya dapat dibuka jika tombol SET ditahan selama 3 detik saat palang diam tertutup, yaitu dalam kondisi siaga atau parkir penuh. Selama mode pengaturan, palang terkunci rapat.
+7. **Antarmuka Pengguna (LCD, LED, Buzzer):**
    * LCD 16x2 I2C menampilkan sisa slot dan status operasi dengan pembaruan berkala tanpa flicker.
    * LED Merah menandakan kendaraan harus berhenti atau kuota penuh, sedangkan LED Hijau menandakan akses terbuka.
    * Buzzer memberikan nada konfirmasi saat kendaraan tervalidasi, nada peringatan saat palang turun, dan nada panjang saat kuota penuh.
@@ -217,7 +219,7 @@ Logika utama program dibagi ke dalam 7 kondisi pada mesin status (Finite State M
 stateDiagram-v2
     [*] --> STATUS_SIAGA
     
-    STATUS_SIAGA --> STATUS_VALIDASI : Mobil Terdeteksi di Sensor 1 (<100 cm)
+    STATUS_SIAGA --> STATUS_VALIDASI : Mobil Terdeteksi di Sensor 1 (<=100 cm)
     STATUS_SIAGA --> STATUS_PENUH : Kuota Slot Habis (Sisa = 0)
     STATUS_SIAGA --> STATUS_KONFIG : Tombol SET Ditahan >= 3 Detik
     
@@ -226,11 +228,13 @@ stateDiagram-v2
     
     STATUS_BUKA --> STATUS_LEWAT : Sudut Palang Mencapai 90 Derajat
     
-    STATUS_LEWAT --> STATUS_TUTUP : Mobil Melewati Sensor 2 dan Menjauh
+    STATUS_LEWAT --> STATUS_TUTUP : Sensor 2 Terhalang lalu Kosong Stabil 1 Detik
+    STATUS_LEWAT --> STATUS_TUTUP : Timeout 30 Detik tanpa Mobil di Sensor 2
     
     STATUS_TUTUP --> STATUS_SIAGA : Sudut Palang Mencapai 0 Derajat
     
-    STATUS_PENUH --> STATUS_SIAGA : Kuota Ditambah atau Mobil Keluar
+    STATUS_PENUH --> STATUS_SIAGA : Kuota Ditambah (Sisa > 0)
+    STATUS_PENUH --> STATUS_KONFIG : Tombol SET Ditahan >= 3 Detik
     
     STATUS_KONFIG --> STATUS_SIAGA : Tombol SET Ditekan untuk Simpan Nilai
 ```
@@ -243,9 +247,9 @@ stateDiagram-v2
 | `STATUS_VALIDASI` | 0° | Hidup | Mati | Senyap | `MENDETEKSI...   `<br>`MOHON TUNGGU 2S ` |
 | `STATUS_BUKA` | 0° -> 90° | Kedip Cepat | Mati | Bip Cepat | `MEMBUKA GERBANG `<br>`HARAP BERHENTI  ` |
 | `STATUS_LEWAT` | 90° | Mati | Hidup | Bip 2x | `SILAKAN MASUK   `<br>`HATI-HATI JALAN ` |
-| `STATUS_TUTUP` | 90° -> 0° | Kedip Cepat | Mati | Bip Kontinu | `MENUTUP GERBANG `<br>`AWAS PALANG TURUN` |
+| `STATUS_TUTUP` | 90° -> 0° | Kedip Cepat | Mati | Bip Kontinu | `MENUTUP GERBANG `<br>`PALANG TURUN!   ` |
 | `STATUS_PENUH` | 0° | Kedip Lambat | Mati | Bip Panjang | `PARKIR PENUH!   `<br>`AKSES DITOLAK    ` |
-| `STATUS_KONFIG` | 0° | Kedip Bersama | Kedip Bersama | Bip Tombol | `ATUR MAX SLOT   `<br>`KAPASITAS: < XX >` |
+| `STATUS_KONFIG` | 0° | Kedip Bersama | Kedip Bersama | Bip Tombol | `ATUR MAX SLOT   `<br>`KAPASITAS: <XX> ` |
 
 ---
 
@@ -273,10 +277,12 @@ smart-parking-gate/
 | :-: | :--- | :--- | :--- |
 | **TC-01** | Filter Objek Lewat | Dekatkan objek ke Sensor 1 selama kurang dari 2 detik lalu jauhkan kembali. | Palang tetap tertutup (0°), sistem kembali ke mode siaga. |
 | **TC-02** | Validasi Masuk | Tahan objek pada Sensor 1 selama minimal 2 detik. | Nada konfirmasi berbunyi, palang membuka ke 90°, LED Hijau menyala. |
-| **TC-03** | Proteksi Tabrakan | Saat palang terbuka, dekatkan objek ke Sensor 2 dan biarkan di sana. | Palang tetap bertahan di posisi 90°, tidak menutup selama sensor 2 terhalang. |
-| **TC-04** | Penutupan Setelah Lewat | Setelah Sensor 2 mendeteksi objek, jauhkan kembali objek dari Sensor 2. | Palang turun perlahan ke 0°, buzzer peringatan berbunyi, slot terisi bertambah 1. |
-| **TC-05** | Kondisi Kuota Penuh | Isi kuota hingga sisa slot bernilai 0, lalu beri pemicu di Sensor 1. | Palang tetap terkunci di 0°, LED Merah berkedip lambat, akses ditolak. |
+| **TC-03** | Kondisi Kuota Penuh | Isi kuota hingga sisa slot bernilai 0, lalu beri pemicu di Sensor 1. | Palang tetap terkunci di 0°, LED Merah berkedip lambat, akses ditolak. |
+| **TC-04** | Proteksi Tabrakan & Penutupan | Saat palang terbuka, dekatkan objek ke Sensor 2 dan biarkan di sana, lalu jauhkan. | Palang bertahan di 90° selama Sensor 2 terhalang. Setelah Sensor 2 kosong stabil 1 detik, palang turun perlahan ke 0° dan slot terisi bertambah 1. |
+| **TC-05** | Safety Interlock Config | Tahan tombol SET saat palang terbuka atau mobil sedang lewat. | Menu config tidak terbuka. Config hanya bisa dibuka dari kondisi siaga atau penuh dengan palang di 0°. |
 | **TC-06** | Ketahanan Data EEPROM | Masuk menu config, ubah kuota ke 25 slot, simpan, lalu restart sistem. | Nilai kuota tetap bernilai 25 slot setelah sistem kembali menyala. |
+| **TC-07** | Filter Clearance 1 Detik | Setelah Sensor 2 terhalang, jauhkan objek kurang dari 1 detik lalu dekatkan lagi. | Palang tetap di 90°. Palang baru turun setelah Sensor 2 kosong stabil minimal 1 detik. |
+| **TC-08** | Batas Tunggu 30 Detik | Buka palang lewat Sensor 1, lalu jangan sentuh Sensor 2 selama 30 detik. | Palang menutup otomatis setelah 30 detik, slot terisi tidak bertambah. |
 
 ---
 
@@ -357,9 +363,10 @@ Target Output (Selesai sebelum Kamis, 19 Nov):
    * Atur jarak di bawah 100 cm (misalnya 40 cm) dan tahan selama minimal 2 detik.
    * Amati LCD memperbarui status, palang terbuka perlahan ke 90°, LED Hijau menyala, dan nada konfirmasi berbunyi.
 4. Simulasi kendaraan lewat:
-   * Klik modul **Sensor 2 (HC-SR04 Keluar)** dan geser slider jarak ke bawah 100 cm.
-   * Geser kembali ke atas 100 cm untuk menyimulasikan mobil telah menjauh.
+   * Klik modul **Sensor 2 (HC-SR04 Keluar)** dan geser slider jarak ke 100 cm atau kurang.
+   * Geser kembali ke atas 100 cm untuk menyimulasikan mobil telah menjauh, lalu tunggu 1 detik.
    * Palang akan tertutup kembali secara bertahap dan kuota terisi bertambah 1.
+   * Jika Sensor 2 tidak disentuh sama sekali, palang menutup otomatis setelah 30 detik tanpa menambah kuota terisi.
 
 ### 2. Mengunggah ke Hardware Fisik
 1. Hubungkan pin komponen ke board Arduino Uno sesuai tabel sambungan pin.
