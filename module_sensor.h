@@ -11,6 +11,9 @@ static bool masukSedangTerdeteksi = false;
 static bool masukSudahDihitung = false;
 
 static bool keluarSedangTerdeteksi = false;
+static bool keluarPernahTerdeteksi = false;
+static bool keluarMenungguKosong = false;
+static unsigned long waktuMulaiKosongKeluar = 0;
 
 // Membaca jarak dalam cm
 long bacaJarak(uint8_t pinTrig, uint8_t pinEcho) {
@@ -76,8 +79,10 @@ bool cekMobilMasuk() {
   return false;
 }
 
-// True sekali setelah kendaraan melewati
-// sensor keluar dan area sensor kembali kosong
+// True sekali setelah kendaraan melewati sensor keluar
+// dan area sensor kosong stabil selama DURASI_CLEARANCE.
+// Jika Sensor 2 terhalang lagi sebelum jeda habis,
+// hitungan jeda diulang dari nol.
 bool cekMobilLewat() {
   long jarak = bacaJarak(
     PIN_TRIG_KELUAR, PIN_ECHO_KELUAR
@@ -88,15 +93,41 @@ bool cekMobilLewat() {
 
   if (terdeteksi) {
     keluarSedangTerdeteksi = true;
+    keluarPernahTerdeteksi = true;
+    keluarMenungguKosong = false;
     return false;
   }
 
-  if (keluarSedangTerdeteksi) {
+  if (!keluarSedangTerdeteksi) {
+    return false;  // Sensor 2 belum pernah terhalang
+  }
+
+  if (!keluarMenungguKosong) {
+    keluarMenungguKosong = true;
+    waktuMulaiKosongKeluar = millis();
+    return false;
+  }
+
+  if (millis() - waktuMulaiKosongKeluar >= DURASI_CLEARANCE) {
     keluarSedangTerdeteksi = false;
+    keluarMenungguKosong = false;
     return true;
   }
 
   return false;
+}
+
+// Reset status Sensor 2 sebelum menunggu mobil lewat
+void resetSensorKeluar() {
+  keluarSedangTerdeteksi = false;
+  keluarPernahTerdeteksi = false;
+  keluarMenungguKosong = false;
+  waktuMulaiKosongKeluar = 0;
+}
+
+// True jika Sensor 2 sudah pernah terhalang sejak reset terakhir
+bool sensorKeluarPernahTerdeteksi() {
+  return keluarPernahTerdeteksi;
 }
 
 // Batalkan validasi kendaraan masuk
