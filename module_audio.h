@@ -75,9 +75,11 @@ void perbaruiAudio() {
     case AUDIO_MASUK:
       // Transisi: Bip 1 -> Jeda -> Bip 2 -> Selesai
       if (tahapNada == 0 && (sekarang - waktuNadaTerakhir >= BIP_PENDEK)) {
+        noTone(PIN_BUZZER);
         tahapNada = 1;
         waktuNadaTerakhir = sekarang;
       } else if (tahapNada == 1 && (sekarang - waktuNadaTerakhir >= JEDA_NADA)) {
+        noTone(PIN_BUZZER);
         tahapNada = 2;
         waktuNadaTerakhir = sekarang;
         tone(PIN_BUZZER, NADA_MASUK, BIP_PENDEK);
@@ -89,9 +91,11 @@ void perbaruiAudio() {
     case AUDIO_GERAK:
       // Loop ritmik sirine berkelanjutan: Bip -> Jeda Panjang -> Bip
       if (tahapNada == 0 && (sekarang - waktuNadaTerakhir >= BIP_PENDEK)) {
+        noTone(PIN_BUZZER);
         tahapNada = 1;
         waktuNadaTerakhir = sekarang;
       } else if (tahapNada == 1 && (sekarang - waktuNadaTerakhir >= JEDA_NADA * 2)) {
+        noTone(PIN_BUZZER);
         tahapNada = 0;
         waktuNadaTerakhir = sekarang;
         tone(PIN_BUZZER, NADA_TUTUP, BIP_PENDEK);

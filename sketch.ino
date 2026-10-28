@@ -5,18 +5,8 @@
 #include "config.h"
 #include "module_sensor.h"
 #include "module_display.h"
-// #include "module_audio.h"
+#include "module_audio.h"
 #include "module_storage.h"
-
-#ifndef MODULE_AUDIO_H
-    void inisialisasiAudio() { pinMode(PIN_BUZZER, OUTPUT); digitalWrite(PIN_BUZZER, LOW); }
-    void perbaruiAudio() {}
-    void bunyiMasuk() { tone(PIN_BUZZER, NADA_MASUK, BIP_PENDEK); }
-    void bunyiGerak() { tone(PIN_BUZZER, NADA_TUTUP, BIP_PENDEK); }
-    void bunyiPenuh() { tone(PIN_BUZZER, NADA_PENUH, BIP_PANJANG); }
-    void bunyiKlik()  { tone(PIN_BUZZER, NADA_KLIK, 40); }
-    void matikanAudio() { noTone(PIN_BUZZER); }
-    #endif
 
 StatusSistem statusSaatIni = STATUS_SIAGA;
 int sudutPalang = SUDUT_TUTUP;
@@ -130,7 +120,7 @@ void loop() {
         statusSaatIni = STATUS_TUTUP;
       } else if (sensorKeluarPernahTerdeteksi()) {
         if (!logSensorKeluar) {
-          Serial.println(F("[FSM]: Mobil terdeteksi di Sensor 2. Palang ditahan sampai Sensor 2 kosong 1 detik."));
+          Serial.println(F("[FSM]: Mobil terdeteksi di Sensor 2. Palang ditahan sampai Sensor 2 kosong."));
           logSensorKeluar = true;
         }
       } else if (millis() - waktuMulaiLewat >= TIMEOUT_LEWAT) {
@@ -160,6 +150,11 @@ void loop() {
         statusSaatIni = STATUS_KONFIG;
       } else if (hitungSisaSlot() > 0) {
         statusSaatIni = STATUS_SIAGA;
+      } else {
+        long jarakMasuk = bacaJarak(PIN_TRIG_MASUK, PIN_ECHO_MASUK);
+        if (jarakMasuk > 0 && jarakMasuk <= JARAK_DETEKSI) {
+          punyiPenuh();
+        }
       }
       break;
 
