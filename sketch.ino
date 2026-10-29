@@ -58,7 +58,7 @@ void loop() {
 
   perbaruiAudio();
   perbaruiLed(statusSaatIni);
-  perbaruiLcd(statusSaatIni, hitungSisaSlot(), kapasitasMaks);
+  perbaruiLcd(statusSaatIni, slotTerisi, kapasitasMaks);
 
   switch (statusSaatIni) {
 
@@ -153,7 +153,7 @@ void loop() {
       } else {
         long jarakMasuk = bacaJarak(PIN_TRIG_MASUK, PIN_ECHO_MASUK);
         if (jarakMasuk > 0 && jarakMasuk <= JARAK_DETEKSI) {
-          punyiPenuh();
+          bunyiPenuh();
         }
       }
       break;

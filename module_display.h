@@ -114,7 +114,7 @@ void tampilkanMenuConfig(int nilaiSementara) {
 // tampilkanMenuConfig), jadi sketch cukup memanggil:
 //   perbaruiLcd(statusSaatIni, hitungSisaSlot(), nilaiSementara);
 // ============================================================
-void perbaruiLcd(StatusSistem status, int sisaSlot, int totalSlot) {
+void perbaruiLcd(StatusSistem status, int terisiSlot, int totalSlot) {
   unsigned long sekarang = millis();
   if (sekarang - _lcdWaktuTerakhir < REFRESH_LCD) return;
   _lcdWaktuTerakhir = sekarang;
@@ -124,12 +124,12 @@ void perbaruiLcd(StatusSistem status, int sisaSlot, int totalSlot) {
     return;
   }
 
-  sisaSlot  = constrain(sisaSlot,  0, 99);
+  terisiSlot = constrain(terisiSlot,  0, 99);
   totalSlot = constrain(totalSlot, 0, 99);
 
   bool berubah = (status != _lcdStatusTerakhir);
   if (status == STATUS_SIAGA &&
-      (sisaSlot != _lcdSisaTerakhir || totalSlot != _lcdTotalTerakhir)) {
+      (terisiSlot != _lcdSisaTerakhir || totalSlot != _lcdTotalTerakhir)) {
     berubah = true;
   }
   if (!berubah) return;
@@ -137,7 +137,7 @@ void perbaruiLcd(StatusSistem status, int sisaSlot, int totalSlot) {
   char buf[17];
   switch (status) {
     case STATUS_SIAGA:
-      snprintf(buf, sizeof(buf), "SLOT: %02d/%02d OPEN", sisaSlot, totalSlot);
+      snprintf(buf, sizeof(buf), "TERISI: %02d/%02d", terisiSlot, totalSlot);
       _tulisBaris(0, buf);
       _tulisBaris(1, "SILAKAN MENDEKAT");
       break;
@@ -166,7 +166,7 @@ void perbaruiLcd(StatusSistem status, int sisaSlot, int totalSlot) {
   }
 
   _lcdStatusTerakhir = status;
-  _lcdSisaTerakhir   = sisaSlot;
+  _lcdSisaTerakhir   = terisiSlot;
   _lcdTotalTerakhir  = totalSlot;
 }
 

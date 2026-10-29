@@ -151,6 +151,8 @@ void matikanAudio();                    // Matikan suara buzzer seketika
 
 // Parameter EEPROM & Batas Slot
 #define ALAMAT_EEPROM             0     // Alamat byte penyimpanan slot di EEPROM
+#define ALAMAT_MAGIC              1     // Alamat byte magic number untuk validasi EEPROM
+#define NILAI_MAGIC              0xA5   // Nilai magic number untuk validasi EEPROM
 #define SLOT_DEFAULT             10     // Nilai kapasitas bawaan default
 #define SLOT_MIN                  1     // Batas minimal slot parkir
 #define SLOT_MAX                 99     // Batas maksimal slot parkir

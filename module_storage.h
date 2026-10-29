@@ -72,9 +72,20 @@ void inisialisasiStorage() {
 }
 
 void bacaEeprom() {
+  byte magic = EEPROM.read(ALAMAT_MAGIC);
   int nilai = EEPROM.read(ALAMAT_EEPROM);
-  if (nilai < SLOT_MIN || nilai > SLOT_MAX) {
+
+  if (magic != NILAI_MAGIC || nilai < SLOT_MIN || nilai > SLOT_MAX) {
     nilai = SLOT_DEFAULT;
+    EEPROM.update(ALAMAT_EEPROM, (byte)nilai);
+    EEPROM.update(ALAMAT_MAGIC, (byte)NILAI_MAGIC);
+    Serial.println(F("[EEPROM]: Tidak valid, reset ke default"));
+    Serial.print(magic, HEX);
+    Serial.print(F("). Menulis Default = "));
+    Serial.println(nilai);
+  } else {
+     Serial.print(F("[EEPROM]: Data valid terbaca. Kapasitas = "));
+     Serial.println(nilai);
   }
   kapasitasMaks = nilai;
 }
@@ -82,10 +93,15 @@ void bacaEeprom() {
 void simpanEeprom(int nilaiBaru) {
   nilaiBaru = constrain(nilaiBaru, SLOT_MIN, SLOT_MAX);
   EEPROM.update(ALAMAT_EEPROM, (byte)nilaiBaru);
+  EEPROM.update(ALAMAT_MAGIC, (byte)NILAI_MAGIC);
   kapasitasMaks = nilaiBaru;
   if (slotTerisi > kapasitasMaks) {
-    slotTerisi = kapasitasMaks;  
+    slotTerisi = kapasitasMaks;
   }
+  Serial.print(F("[EEPROM]: Disimpan ke EEPROM. Kapasitas = "));
+  Serial.print(EEPROM.read(ALAMAT_EEPROM));
+  Serial.print(F(", magic = 0x"));
+  Serial.println(EEPROM.read(ALAMAT_MAGIC), HEX);
 }
 
 bool cekTombolSetTahan() {
